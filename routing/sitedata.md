@@ -1,8 +1,8 @@
 # 域名文件
 
 ## 内置的域名文件
-在下载 V2Ray 的时候，下载的压缩包有一个 geosite.dat。这个文件是在路由功能里用到的，文件内置了许多[常见的国内网站域名](https://github.com/v2ray/ext/blob/master/tools/geosites/cn.go)。配置方式如下，geosite 指 geosite.dat 文件，后面的 cn 是一个标签，代表着使用 geosite.dat 文件里的cn 规则。
-```
+在下载 V2Ray 的时候，下载的压缩包有一个 geosite.dat。这个文件是在路由功能里用到的，文件内置了许多[常见的网站域名](https://github.com/v2ray/domain-list-community)。配置方式如下，geosite 指 geosite.dat 文件，后面的 cn 是一个标签，代表着使用 geosite.dat 文件里的 cn 规则。
+```javascript
 {
     "type": "field",
     "outboundTag": "direct",
@@ -17,26 +17,24 @@
 
 很多时候，V2Ray 内置的国内域名不能满足使用。不过 V2Ray 可以使用外部自定义的像 geosite.dat 这样的域名文件，刚好我也制作了一个，可以供大家使用。
 
-1. 到 https://github.com/ToutyRater/v2ray-SiteDAT/releases 下载 h2y.dat 文件放到 V2Ray 运行文件的目录下。
-2. 按需要些路由规则，格式为 "ext:h2y.dat:tag"。ext 表示使用外部文件；h2y.dat 是具体的文件名；tag 泛指标签，有哪些标签由文件提供。下载的 h2y.dat 文件有 4 个标签，分别是 top500_direct、gfw、ad 和 mad，意思分别是前 500 可以直连的网站域名、gfw域名列表、广告列表和手动添加的广告域名，它们所包含的域名在[这里](https://github.com/ToutyRater/v2ray-SiteDAT/tree/master/h2y)可以看到。示例如下。
-3. 运行 V2Ray。
-```
+1. 到 https://github.com/ToutyRater/V2Ray-SiteDAT/tree/master/geofiles 下载 h2y.dat 文件放到 V2Ray 运行文件的目录下。
+1. 按需要些路由规则，格式为 "ext:h2y.dat:tag"。ext 表示使用外部文件；h2y.dat 是具体的文件名；tag 泛指标签，有哪些标签由文件提供。上个步骤下载的 h2y.dat 文件目前只有 `ad` 和 `gfw` 两个标签，ad 包含着常见的广告域名，gfw 包含着常见的被 gfw 屏蔽的域名。它们各自所包含的域名在[这里](https://github.com/ToutyRater/v2ray-SiteDAT/tree/master/h2y)可以看到。这个域名文件每星期自动更新，如果你使用了我提供的域名文件也请定期更新(打开 https://github.com/ToutyRater/V2Ray-SiteDAT/tree/master/geofiles 看到的都是当时的最新版本)。路由配置示例如下。
+1. 运行 V2Ray。
+```javascript
 "rules":[
     {
         "type": "field",
-        "outboundTag": "block",
+        "outboundTag": "block", //拦截广告相关域名
         "domain": [
-            "ext:h2y.dat:mad",
             "ext:h2y.dat:ad"
         ]
     },
     {
         "type": "field",
-        "outboundTag": "proxy",
+        "outboundTag": "proxy", //被 gfw 屏蔽的域名走代理
         "domain": [
             "ext:h2y.dat:gfw"
         ]
-        
     }
 ]
 ```
@@ -46,3 +44,4 @@
 ## 更新历史
 
 - 2018-06-07 初版
+- 2018-11-06 删除不必要的标签

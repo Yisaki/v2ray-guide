@@ -33,7 +33,7 @@ $ jq . config.json
 
 （从 v2.11 起新增了一个注释功能，配置文件允许 `//` 和 `/**/` 注释。但是 JSON 的标准格式的没有注释的，也就是说如果你给配置文件加了注释，再使用上文我说的格式化功能会报错说你的 JSON 语法（格式）不对。）
 
-不过，最好还是使用 V2Ray 提供的配置检查功能（test 选项），因为可以检查 JOSN 语法错误外的问题，比如说突然间手抖把 vmess 写成了 vmss，一下子就检查出来了。
+不过，最好还是使用 V2Ray 提供的配置检查功能（test 选项），因为可以检查 JSON 语法错误外的问题，比如说突然间手抖把 vmess 写成了 vmss，一下子就检查出来了。
 ```
 $ /usr/bin/v2ray/v2ray -test -config /etc/v2ray/config.json
 failed to parse json config: Ext|Tools|Conf|Serial: failed to parse json config > Ext|Tools|Conf: failed to load inbound detour config. > Ext|Tools|Conf: unknown config id: vmss
@@ -53,44 +53,51 @@ Configuration OK.
 
 以下给出了 VMess 的配置文件，包含客户端和服务器端，将你的配置替换成下面给出的配置，然后将服务器地址修改成你的就可以正常使用。修改完配置之后要重启 V2Ray 才能使用新配置生效。
 
-**VMess 协议的认证基于时间，一定要保证服务器和客户端的系统时间相差要在一分钟以内。**
+**VMess 协议的认证基于时间，一定要保证服务器和客户端的系统时间相差要在90秒以内。**
 
 ### 客户端配置
 
 以下是客户端配置，将客户端的 config.json 文件修改成下面的内容，修改完成后要重启 V2Ray 才会使修改的配置生效。
 ```javascript
 {
-  "inbound": {
-    "port": 1080, // 监听端口
-    "protocol": "socks", // 入口协议为 SOCKS 5
-    "domainOverride": ["tls","http"],
-    "settings": {
-      "auth": "noauth"  //socks的认证设置，noauth 代表不认证，由于 socks 通常在客户端使用，所以这里不认证
+  "inbounds": [
+    {
+      "port": 1080, // 监听端口
+      "protocol": "socks", // 入口协议为 SOCKS 5
+      "sniffing": {
+        "enabled": true,
+        "destOverride": ["http", "tls"]
+      },
+      "settings": {
+        "auth": "noauth"  //socks的认证设置，noauth 代表不认证，由于 socks 通常在客户端使用，所以这里不认证
+      }
     }
-  },
-  "outbound": {
-    "protocol": "vmess", // 出口协议
-    "settings": {
-      "vnext": [
-        {
-          "address": "serveraddr.com", // 服务器地址，请修改为你自己的服务器 IP 或域名
-          "port": 16823,  // 服务器端口
-          "users": [
-            {
-              "id": "b831381d-6324-4d53-ad4f-8cda48b30811",  // 用户 ID，必须与服务器端配置相同
-              "alterId": 64 // 此处的值也应当与服务器相同
-            }
-          ]
-        }
-      ]
+  ],
+  "outbounds": [
+    {
+      "protocol": "vmess", // 出口协议
+      "settings": {
+        "vnext": [
+          {
+            "address": "serveraddr.com", // 服务器地址，请修改为你自己的服务器 IP 或域名
+            "port": 16823,  // 服务器端口
+            "users": [
+              {
+                "id": "b831381d-6324-4d53-ad4f-8cda48b30811",  // 用户 ID，必须与服务器端配置相同
+                "alterId": 64 // 此处的值也应当与服务器相同
+              }
+            ]
+          }
+        ]
+      }
     }
-  }
+  ]
 }
 ```
 
-在配置当中，有一个 id (在这里的例子是 b831381d-6324-4d53-ad4f-8cda48b30811)，作用类似于 Shadowsocks 的密码(password), VMess 的 id 使用的是 UUID 格式。关于 id 或者 UUID 没必要了解很多，在这里只要清楚以下几点就足够了：
+在配置当中，有一个 id (在这里的例子是 b831381d-6324-4d53-ad4f-8cda48b30811)，作用类似于 Shadowsocks 的密码(password), VMess 的 id 的格式必须与 UUID 格式相同。关于 id 或者 UUID 没必要了解很多，在这里只要清楚以下几点就足够了：
 * 相对应的 VMess 传入传出的 id 必须相同（如果你不是很明白这句话，那么可以简单理解成服务器与客户端的 id 必须相同）
-* 由于 id 使用的是 UUID，我们可以使用任何 UUID 生成工具生成 UUID 作为这里的 id。比如 [UUID Generator](https://www.uuidgenerator.net/) 这个网站，只要一打开或者刷新这个网页就可以得到一个 UUID，如下图。或者可以在 Linux 使用命令 `cat /proc/sys/kernel/random/uuid` 生成。
+* 由于 id 使用的是 UUID 的格式，我们可以使用任何 UUID 生成工具生成 UUID 作为这里的 id。比如 [UUID Generator](https://www.uuidgenerator.net/) 这个网站，只要一打开或者刷新这个网页就可以得到一个 UUID，如下图。或者可以在 Linux 使用命令 `cat /proc/sys/kernel/random/uuid` 生成。
 
 ![](/resource/images/generate_uuid.png)
 
@@ -99,22 +106,26 @@ Configuration OK.
 以下是服务器配置，将服务器 /etc/v2ray 目录下的 config.json 文件修改成下面的内容，修改完成后要重启 V2Ray 才会使修改的配置生效。
 ```javascript
 {
-  "inbound": {
-    "port": 16823, // 服务器监听端口
-    "protocol": "vmess",    // 主传入协议
-    "settings": {
-      "clients": [
-        {
-          "id": "b831381d-6324-4d53-ad4f-8cda48b30811",  // 用户 ID，客户端与服务器必须相同
-          "alterId": 64
-        }
-      ]
+  "inbounds": [
+    {
+      "port": 16823, // 服务器监听端口
+      "protocol": "vmess",    // 主传入协议
+      "settings": {
+        "clients": [
+          {
+            "id": "b831381d-6324-4d53-ad4f-8cda48b30811",  // 用户 ID，客户端与服务器必须相同
+            "alterId": 64
+          }
+        ]
+      }
     }
-  },
-  "outbound": {
-    "protocol": "freedom",  // 主传出协议
-    "settings": {}
-  }
+  ],
+  "outbounds": [
+    {
+      "protocol": "freedom",  // 主传出协议
+      "settings": {}
+    }
+  ]
 }
 ```
 
@@ -122,14 +133,22 @@ Configuration OK.
 
 根据上文给出的配置，在这里简单的介绍一下 V2Ray 的工作原理。
 
+无论是客户端还是服务器，配置文件都由两部分内容组成： `inbounds` 和 `outbounds`。V2Ray 没有使用常规代理软件的 C/S（即客户端/服务器）结构，它既可以当做服务器也可以作为客户端。于是我们可以从另一个角度来理解，认为每一个 V2Ray 都是一个节点，`inbound` 是关于如何与上一个节点连接的配置，`outbound` 是关于如何与下一个节点连接的配置。对于第一个节点，`inbound` 与浏览器连接；对于最后一个节点，`outbound`与目标网站连接。`inbounds` 和 `outbounds` 是 `inbound` 和 `outbound` 的集合，意味着每一个 V2Ray 节点都可以有多个入口和出口。本例当中的入口和出口都只有一个，这是为了便于说明和理解。
+
 ### 客户端
 
-请看配置中的 inbound，port 为 1080，V2Ray 监听了一个端口 1080，协议是 socks。之前我们已经把浏览器的代理设置好了（SOCKS Host: 127.0.0.1，Port: 1080），假如访问了 google.com，浏览器就会发出一个数据包打包成 socks 协议发送到本机（127.0.0.1指的本机，localhost）的 1080 端口，这个时候数据包就会被 V2Ray 接收到。
+客户端配置中的 inbounds，port 为 1080，即 V2Ray 监听了一个端口 1080，协议是 socks。之前我们已经把浏览器的代理设置好了（SOCKS Host: 127.0.0.1，Port: 1080），假如访问了 google.com，浏览器就会发出一个数据包打包成 socks 协议发送到本机（127.0.0.1指的本机，localhost）的 1080 端口，这个时候数据包就会被 V2Ray 接收到。
 
-再看 outbound，protocol 是 vmess，说明 V2Ray 接收到数据包之后要将数据包打包成 [VMess](https://www.v2ray.com/chapter_03/01_effective.html#vmess-%E5%8D%8F%E8%AE%AE) 协议并且使用预设的 id 加密（这个例子 id 是 b831381d-6324-4d53-ad4f-8cda48b30811），然后发往服务器地址为 serveraddr.com 的 16823 端口。服务器地址 address 可以是域名也可以是 IP，只要正确就可以了。
+再看 outbounds，protocol 是 vmess，说明 V2Ray 接收到数据包之后要将数据包打包成 [VMess](https://www.v2ray.com/chapter_03/01_effective.html#vmess-%E5%8D%8F%E8%AE%AE) 协议并且使用预设的 id 加密（这个例子 id 是 b831381d-6324-4d53-ad4f-8cda48b30811），然后发往服务器地址为 serveraddr.com 的 16823 端口。服务器地址 address 可以是域名也可以是 IP，只要正确就可以了。
 
 
-在客户端配置的 inbound 中，有一句 `"domainOverride": ["tls","http"]`，V2Ray 手册解释为“识别相应协议的流量，并根据流量内容重置所请求的目标”，不少人不太理解，简单说这东西就是从网络流量中识别出域名。这个 domainOverride 有两个用处：1. 解决 DNS 污染；2. 对于 IP 流量可以应用后文提到的域名路由规则。如果这段话不懂，没关系，照着写吧，没坏处。
+在客户端配置的 inbounds 中，有一个 `"sniffing"` 字段，V2Ray 手册解释为“流量探测，根据指定的流量类型，重置所请求的目标”，这话不太好理解，简单说这东西就是从网络流量中识别出域名。这个 sniffing 有两个用处：
+
+1. 解决 DNS 污染；
+2. 对于 IP 流量可以应用后文提到的域名路由规则；
+3. 识别 BT 协议，根据自己的需要拦截或者直连 BT 流量(后文有一节专门提及)。
+
+如果这段话不懂，没关系，照着写吧。但是，如果你使用 Tor 浏览器，就不要开启 sniffing (将 sniffing 下的 enabled 设成 false)，否则会导致 Tor 无法上网。
 
 ### 服务器
 
@@ -148,7 +167,7 @@ Configuration OK.
 
 ## 注意事项
 
-- 为了让浅显地介绍 V2Ray 的工作方式，本节中关于原理简析的描述有一些地方是错误的。但我知识水平又不够，还不知道该怎么改，暂且将错就错。正确的工作原理在用户手册的 [VMess 协议](https://www.v2ray.com/eng/protocols/vmess.html) 有详细的说明。
+- 为了让浅显地介绍 V2Ray 的工作方式，本节中关于原理简析的描述有一些地方是错误的。但我知识水平又不够，还不知道该怎么改，暂且将错就错。正确的工作原理在用户手册的 [VMess 协议](https://www.v2ray.com/developer/protocols/vmess.html) 有详细的说明。
 - id 为 UUID 格式，请使用软件生成，不要尝试自己造一个，否则很大程度上造出一个错误的格式来。
 - VMess 协议可以设定加密方式，但 VMess 不同的加密方式对于过墙没有明显差别，本节没有给出相关配置方式（因为这不重要，默认情况下 VMess 会自己选择一种比较合适的加密方式），具体配置可见 [V2Ray 手册](https://v2ray.com/chapter_02/protocols/vmess.html)，不同加密方式的性能可参考[性能测试](/app/benchmark.md)。
 
@@ -191,11 +210,11 @@ Configuration OK.
 
 ### 以上几点都排除之后，请仔细检查：
 
-1). 浏览器的代理设置中的端口号与客户端的inbound 的port 是否一致；
+1). 浏览器的代理设置中的端口号与客户端的 inbound 的 port 是否一致；
 
-2). 客户端中的outbound 设置的address与vps 的ip是否一致；
+2). 客户端中的 outbound 设置的 address 与 vps 的ip是否一致；
 
-3). 客户端中的outbound 设置的address与服务器的outbound 的 port 是否一致；
+3). 客户端中的 outbound 设置的address 与服务器的 inbound 的 port 是否一致；
 
 4). VPS 是否开启了防火墙将连接拦截了；
 
@@ -220,3 +239,5 @@ Configuration OK.
 - 2018-02-09 补充说明
 - 2018-04-05 内容补充
 - 2018-09-03 更进一些 V2Ray 的变化，并修改一些描述
+- 2018-11-09 跟进新 v4.0+ 的配置格式
+- 2018-02-01 domainOverride 改为 sniffing

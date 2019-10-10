@@ -16,29 +16,33 @@
 
 ```javascript
 {
-  "inbound": {
-    "port": 10000,
-    "listen":"127.0.0.1",//只监听 127.0.0.1，避免除本机外的机器探测到开放了 10000 端口
-    "protocol": "vmess",
-    "settings": {
-      "clients": [
-        {
-          "id": "b831381d-6324-4d53-ad4f-8cda48b30811",
-          "alterId": 64
+  "inbounds": [
+    {
+      "port": 10000,
+      "listen":"127.0.0.1",//只监听 127.0.0.1，避免除本机外的机器探测到开放了 10000 端口
+      "protocol": "vmess",
+      "settings": {
+        "clients": [
+          {
+            "id": "b831381d-6324-4d53-ad4f-8cda48b30811",
+            "alterId": 64
+          }
+        ]
+      },
+      "streamSettings": {
+        "network": "ws",
+        "wsSettings": {
+        "path": "/ray"
         }
-      ]
-    },
-    "streamSettings": {
-      "network": "ws",
-      "wsSettings": {
-      "path": "/ray"
       }
     }
-  },
-  "outbound": {
-    "protocol": "freedom",
-    "settings": {}
-  }
+  ],
+  "outbounds": [
+    {
+      "protocol": "freedom",
+      "settings": {}
+    }
+  ]
 }
 ```
 
@@ -55,13 +59,18 @@ server {
   ssl_protocols         TLSv1 TLSv1.1 TLSv1.2;
   ssl_ciphers           HIGH:!aNULL:!MD5;
   server_name           mydomain.me;
-        location /ray {
+        location /ray { # 与 V2Ray 配置中的 path 保持一致
         proxy_redirect off;
         proxy_pass http://127.0.0.1:10000;#假设WebSocket监听在环回地址的10000端口上
         proxy_http_version 1.1;
         proxy_set_header Upgrade $http_upgrade;
         proxy_set_header Connection "upgrade";
         proxy_set_header Host $http_host;
+        
+        # Show realip in v2ray access.log
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header Host $host;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
         }
 }
 ```
@@ -69,6 +78,7 @@ server {
 #### Caddy 配置
 
 因为 Caddy 会自动申请证书并自动更新，所以使用 Caddy 不用指定证书、密钥。  
+
 ```
 mydomain.me
 {
@@ -105,40 +115,47 @@ mydomain.me
 
 ```javascript
 {
-  "inbound": {
-    "port": 1080,
-    "listen": "127.0.0.1",
-    "protocol": "socks",
-    "domainOverride": ["tls","http"],
-    "settings": {
-      "auth": "noauth",
-      "udp": false
-    }
-  },
-  "outbound": {
-    "protocol": "vmess",
-    "settings": {
-      "vnext": [
-        {
-          "address": "mydomain.me",
-          "port": 443,
-          "users": [
-            {
-              "id": "b831381d-6324-4d53-ad4f-8cda48b30811",
-              "alterId": 64
-            }
-          ]
-        }
-      ]
-    },
-    "streamSettings": {
-      "network": "ws",
-      "security": "tls",
-      "wsSettings": {
-        "path": "/ray"
+  "inbounds": [
+    {
+      "port": 1080,
+      "listen": "127.0.0.1",
+      "protocol": "socks",
+      "sniffing": {
+        "enabled": true,
+        "destOverride": ["http", "tls"]
+      },
+      "settings": {
+        "auth": "noauth",
+        "udp": false
       }
     }
-  }
+  ],
+  "outbounds": [
+    {
+      "protocol": "vmess",
+      "settings": {
+        "vnext": [
+          {
+            "address": "mydomain.me",
+            "port": 443,
+            "users": [
+              {
+                "id": "b831381d-6324-4d53-ad4f-8cda48b30811",
+                "alterId": 64
+              }
+            ]
+          }
+        ]
+      },
+      "streamSettings": {
+        "network": "ws",
+        "security": "tls",
+        "wsSettings": {
+          "path": "/ray"
+        }
+      }
+    }
+  ]
 }
 ```
 ### 注意事项
@@ -163,10 +180,8 @@ mydomain.me
 ## 更新历史
 
 - 2017-12-05 加一些提示
-
 - 2018-01-03 Update
-
 - 2018-08-19 Update
-
 - 2018-08-30 Add configuration for Apache2
+- 2018-11-17 V4.0+ 配置
 
